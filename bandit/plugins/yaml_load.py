@@ -13,6 +13,10 @@ an arbitrary Python object, which may be dangerous if you receive a YAML
 document from an untrusted source. The function yaml.safe_load limits this
 ability to simple Python objects like integers or lists.
 
+``SafeLoader``, ``CSafeLoader``, ``BaseLoader``, and ``CBaseLoader`` do not
+construct arbitrary Python objects, so ``yaml.load(..., Loader=...)`` with
+those classes is not reported.
+
 Please see
 https://pyyaml.org/wiki/PyYAMLDocumentation#LoadingYAML for more information
 on ``yaml.load`` and yaml.safe_load
@@ -40,6 +44,9 @@ on ``yaml.load`` and yaml.safe_load
 .. versionchanged:: 1.7.3
     CWE information added
 
+.. versionchanged:: 1.9.5
+    ``BaseLoader`` and ``CBaseLoader`` are treated as safe loaders
+
 """
 import bandit
 from bandit.core import issue
@@ -56,14 +63,13 @@ def yaml_load(context):
 
     qualname_list = qualname.split(".")
     func = qualname_list[-1]
+    safe_loaders = ("SafeLoader", "CSafeLoader", "BaseLoader", "CBaseLoader")
     if all(
         [
             "yaml" in qualname_list,
             func == "load",
-            not context.check_call_arg_value("Loader", "SafeLoader"),
-            not context.check_call_arg_value("Loader", "CSafeLoader"),
-            not context.get_call_arg_at_position(1) == "SafeLoader",
-            not context.get_call_arg_at_position(1) == "CSafeLoader",
+            not context.check_call_arg_value("Loader", list(safe_loaders)),
+            context.get_call_arg_at_position(1) not in safe_loaders,
         ]
     ):
         return bandit.Issue(
